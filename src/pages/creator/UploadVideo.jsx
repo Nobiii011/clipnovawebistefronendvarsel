@@ -6,10 +6,12 @@
 //   4. POST /uploads/complete → HeadObject verify → status = READY
 
 import { useState, useCallback, useRef } from "react";
-import { UploadCloud, FileVideo, X, CheckCircle, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { UploadCloud, FileVideo, X, CheckCircle, AlertCircle, XCircle } from "lucide-react";
 import { useUpload, UPLOAD_STAGES } from "../../hooks/useUpload";
 import { formatFileSize } from "../../lib/formatters";
 import Toast from "../../Components/ui/Toast";
+import { ROUTES } from "../../constants/routes";
 
 const ACCEPTED_MIME = ["video/mp4", "video/quicktime", "video/webm"];
 const ACCEPT_ATTR   = ".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm";
@@ -69,6 +71,7 @@ function StageIndicator({ stage, stageLabel, progress }) {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function UploadVideo() {
+  const navigate = useNavigate();
   const [file, setFile] = useState(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -77,7 +80,7 @@ export default function UploadVideo() {
   const [toast, setToast] = useState(null);
   const inputRef = useRef(null);
 
-  const { stage, stageLabel, progress, error, result, isActive, startUpload, reset, validateFile } = useUpload();
+  const { stage, stageLabel, progress, error, result, isActive, startUpload, reset, abort, validateFile } = useUpload();
 
   const handleFile = useCallback((f) => {
     if (!f) return;
@@ -89,7 +92,6 @@ export default function UploadVideo() {
     }
     setFileError("");
     setFile(f);
-    // Auto-fill title from filename if empty
     if (!title) {
       setTitle(f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").trim());
     }
@@ -104,7 +106,6 @@ export default function UploadVideo() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file || !title.trim() || isActive) return;
-
     await startUpload(file, { title, description });
   };
 
@@ -117,25 +118,19 @@ export default function UploadVideo() {
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  // Show success state
+  // Success: show toast then redirect
   if (stage === UPLOAD_STAGES.DONE && result) {
     return (
       <div className="space-y-6 text-white max-w-2xl">
-        <div>
-          <h1 className="text-2xl font-bold">Upload Video</h1>
-        </div>
-
+        <h1 className="text-2xl font-bold">Upload Video</h1>
         <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-6 space-y-4">
           <div className="flex items-start gap-3">
             <CheckCircle size={24} className="text-green-400 shrink-0 mt-0.5" />
             <div>
               <p className="text-green-300 font-semibold text-lg">Upload Complete!</p>
-              <p className="text-green-400/70 text-sm mt-1">
-                Your video has been uploaded and verified successfully.
-              </p>
+              <p className="text-green-400/70 text-sm mt-1">Your video has been uploaded and is now processing.</p>
             </div>
           </div>
-
           <div className="bg-white/5 rounded-xl p-4 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-white/50">Title</span>
@@ -143,26 +138,23 @@ export default function UploadVideo() {
             </div>
             <div className="flex justify-between">
               <span className="text-white/50">Status</span>
-              <span className="text-green-400 font-medium">{result.status}</span>
+              <span className="text-green-400 font-medium">{result.status ?? "READY"}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-white/50">Video ID</span>
-              <code className="text-white/60 text-xs bg-white/10 px-1.5 py-0.5 rounded">{result._id}</code>
-            </div>
-            {result.storageKey && (
-              <div className="flex justify-between">
-                <span className="text-white/50">Storage Key</span>
-                <code className="text-white/40 text-xs truncate max-w-[200px]">{result.storageKey}</code>
-              </div>
-            )}
           </div>
-
-          <button
-            onClick={handleReset}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-medium bg-white/10 hover:bg-white/15 transition"
-          >
-            Upload Another Video
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate(ROUTES.UPLOADED_VIDEOS)}
+              className="px-6 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 transition"
+            >
+              View My Videos
+            </button>
+            <button
+              onClick={handleReset}
+              className="px-6 py-2.5 rounded-xl text-sm font-medium bg-white/10 hover:bg-white/15 transition"
+            >
+              Upload Another
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -297,35 +289,46 @@ export default function UploadVideo() {
             </div>
             <button
               type="button"
-              onClick={() => { reset(); }}
-              className="text-white/40 hover:text-white transition text-xs shrink-0"
+              onClick={handleReset}
+              className="text-white/40 hover:text-white transition text-xs shrink-0 flex items-center gap-1"
             >
-              Dismiss
+              <XCircle size={14} /> Retry
             </button>
           </div>
         )}
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="w-full sm:w-auto px-8 py-3 rounded-xl font-medium text-sm transition
-            bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90
-            disabled:opacity-40 disabled:cursor-not-allowed
-            flex items-center justify-center gap-2"
-        >
-          {isActive ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              {stageLabel}
-            </>
-          ) : (
-            <>
-              <UploadCloud size={16} />
-              Upload Video
-            </>
+        {/* Submit / Abort */}
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className="flex-1 sm:flex-none px-8 py-3 rounded-xl font-medium text-sm transition
+              bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90
+              disabled:opacity-40 disabled:cursor-not-allowed
+              flex items-center justify-center gap-2"
+          >
+            {isActive ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {stageLabel}
+              </>
+            ) : (
+              <>
+                <UploadCloud size={16} />
+                Upload Video
+              </>
+            )}
+          </button>
+          {isActive && (
+            <button
+              type="button"
+              onClick={abort}
+              className="px-4 py-3 rounded-xl text-sm font-medium bg-white/10 hover:bg-red-500/20 hover:text-red-400 transition flex items-center gap-2"
+            >
+              <X size={15} /> Cancel
+            </button>
           )}
-        </button>
+        </div>
       </form>
     </div>
   );

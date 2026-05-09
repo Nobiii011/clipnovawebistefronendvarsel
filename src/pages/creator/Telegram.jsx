@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { Copy, CheckCheck, ExternalLink, Send, Upload, Link2, Zap, RefreshCw, Info } from "lucide-react";
 
-const BOT_USERNAME = "@clipnova_bot";
-const BOT_URL = "https://t.me/clipnova_bot";
+const BOT_USERNAME = "@clipnovaaBot";
+const BOT_URL = "https://t.me/clipnovaaBot";
 
 const COMMANDS = [
   { cmd: "/login", desc: "Link your ClipNova account to Telegram", color: "text-cyan-400", bg: "bg-cyan-500/10 border-cyan-500/20" },

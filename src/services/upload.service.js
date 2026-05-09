@@ -59,10 +59,9 @@ export async function initiateUpload({ videoId, fileName, fileSize, mimeType }) 
 
 /**
  * Upload file directly to R2 via signed PUT URL.
- * Uses fetch() with no-cors fallback awareness.
- * Progress tracked via ReadableStream in supported browsers.
+ * Uses XHR for progress tracking. No auth headers sent to R2.
  */
-export function uploadToR2(uploadUrl, file, onProgress) {
+export function uploadToR2(uploadUrl, file, onProgress, signal) {
   const url = proxyR2Url(uploadUrl);
 
   return new Promise((resolve, reject) => {
@@ -78,23 +77,35 @@ export function uploadToR2(uploadUrl, file, onProgress) {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
       } else {
-        // Try to parse R2 error XML
         const match = xhr.responseText?.match(/<Message>(.*?)<\/Message>/);
         const msg = match ? match[1] : `Upload failed (HTTP ${xhr.status})`;
         reject(new Error(msg));
       }
     });
 
-    xhr.addEventListener("error", () => {
-      reject(new Error("Upload failed. Check your internet connection and try again."));
-    });
+    xhr.addEventListener("error", () =>
+      reject(new Error("Upload failed. Check your internet connection and try again."))
+    );
 
-    xhr.addEventListener("abort", () => {
-      reject(new Error("Upload was cancelled."));
-    });
+    xhr.addEventListener("abort", () =>
+      reject(new Error("Upload was cancelled."))
+    );
 
+    xhr.addEventListener("timeout", () =>
+      reject(new Error("Upload timed out. Please try again."))
+    );
+
+    // Abort support via AbortSignal
+    if (signal) {
+      signal.addEventListener("abort", () => xhr.abort());
+    }
+
+    xhr.timeout = 0; // no timeout for large files
     xhr.open("PUT", url);
+    // CRITICAL: Only Content-Type. No Authorization. No cookies.
     xhr.setRequestHeader("Content-Type", file.type);
+    // Explicitly do NOT send credentials
+    xhr.withCredentials = false;
     xhr.send(file);
   });
 }

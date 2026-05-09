@@ -32,23 +32,28 @@ const STAGE_LABELS = {
 export function useUpload() {
   const qc = useQueryClient();
   const [stage, setStage] = useState(UPLOAD_STAGES.IDLE);
-  const [progress, setProgress] = useState(0);   // 0–100 during UPLOADING
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
-  const [result, setResult] = useState(null);     // completed video object
-  const abortRef = useRef(false);
+  const [result, setResult] = useState(null);
+  const abortControllerRef = useRef(null);
+  const abortedRef = useRef(false);
 
   const reset = useCallback(() => {
-    abortRef.current = false;
+    abortedRef.current = false;
     setStage(UPLOAD_STAGES.IDLE);
     setProgress(0);
     setError(null);
     setResult(null);
   }, []);
 
-  /**
-   * Validate file before starting upload.
-   * Returns error string or null.
-   */
+  const abort = useCallback(() => {
+    abortedRef.current = true;
+    abortControllerRef.current?.abort();
+    setStage(UPLOAD_STAGES.IDLE);
+    setProgress(0);
+    setError(null);
+  }, []);
+
   const validateFile = useCallback((file) => {
     if (!file) return "No file selected.";
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
@@ -61,11 +66,6 @@ export function useUpload() {
     return null;
   }, []);
 
-  /**
-   * Full upload flow: create → initiate → upload → complete
-   * @param {File}   file
-   * @param {{ title: string, description?: string }} metadata
-   */
   const startUpload = useCallback(async (file, metadata) => {
     const fileError = validateFile(file);
     if (fileError) {
@@ -74,21 +74,23 @@ export function useUpload() {
       return;
     }
 
-    abortRef.current = false;
+    const ac = new AbortController();
+    abortControllerRef.current = ac;
+    abortedRef.current = false;
     setError(null);
     setResult(null);
     setProgress(0);
 
     try {
-      // ── STEP 1: Create video record ──────────────────────────────────────
+      // STEP 1: Create video record
       setStage(UPLOAD_STAGES.CREATING);
       const video = await createVideo({
         title: metadata.title.trim(),
         description: metadata.description?.trim() || undefined,
       });
-      if (abortRef.current) return;
+      if (abortedRef.current) return;
 
-      // ── STEP 2: Get signed upload URL ────────────────────────────────────
+      // STEP 2: Get signed upload URL
       setStage(UPLOAD_STAGES.INITIATING);
       const { uploadUrl } = await initiateUpload({
         videoId: video._id,
@@ -96,27 +98,27 @@ export function useUpload() {
         fileSize: file.size,
         mimeType: file.type,
       });
-      if (abortRef.current) return;
+      if (abortedRef.current) return;
 
-      // ── STEP 3: Upload directly to R2 ────────────────────────────────────
+      if (!uploadUrl) throw new Error("No upload URL returned from server.");
+
+      // STEP 3: PUT directly to R2 — no auth header
       setStage(UPLOAD_STAGES.UPLOADING);
       await uploadToR2(uploadUrl, file, (pct) => {
-        if (!abortRef.current) setProgress(pct);
-      });
-      if (abortRef.current) return;
+        if (!abortedRef.current) setProgress(pct);
+      }, ac.signal);
+      if (abortedRef.current) return;
 
-      // ── STEP 4: Verify + mark READY ──────────────────────────────────────
+      // STEP 4: Notify backend upload is complete
       setStage(UPLOAD_STAGES.COMPLETING);
       const completed = await completeUpload(video._id);
-      if (abortRef.current) return;
+      if (abortedRef.current) return;
 
       setResult(completed);
       setStage(UPLOAD_STAGES.DONE);
-
-      // Invalidate video list so dashboard + uploaded videos refresh
       qc.invalidateQueries({ queryKey: queryKeys.videos() });
     } catch (err) {
-      if (!abortRef.current) {
+      if (!abortedRef.current) {
         setError(err.message || "Upload failed. Please try again.");
         setStage(UPLOAD_STAGES.ERROR);
       }
@@ -135,6 +137,7 @@ export function useUpload() {
     isActive,
     startUpload,
     reset,
+    abort,
     validateFile,
     ALLOWED_MIME_TYPES,
     MAX_FILE_SIZE,
