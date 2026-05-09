@@ -2,9 +2,9 @@
 import { useState } from "react";
 import { FileText } from "lucide-react";
 import { useAuditLogs } from "../../hooks/useAdmin";
-import { AdminTable, Pagination, Modal } from "../../components/admin/AdminShared";
-import { ErrorState, EmptyState } from "../../components/ui/States";
-import Toast from "../../components/ui/Toast";
+import { AdminTable, Pagination, Modal } from "../../Components/admin/AdminShared";
+import { ErrorState, EmptyState } from "../../Components/ui/States";
+import Toast from "../../Components/ui/Toast";
 import { formatDateTime } from "../../lib/formatters";
 
 const ACTION_COLORS = {

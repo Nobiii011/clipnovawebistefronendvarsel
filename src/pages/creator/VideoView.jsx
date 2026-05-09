@@ -8,11 +8,11 @@ import { Copy, CheckCheck, Plus, ToggleLeft, ToggleRight, ArrowLeft, ExternalLin
 import { useQuery } from "@tanstack/react-query";
 import { getVideo } from "../../services/video.service";
 import { useVideoLinks, useCreateLink, useToggleLink } from "../../hooks/useLinks";
-import VideoPlayer from "../../components/video/VideoPlayer";
-import { Badge } from "../../components/admin/AdminShared";
-import { Skeleton } from "../../components/ui/Skeleton";
-import { ErrorState } from "../../components/ui/States";
-import Toast from "../../components/ui/Toast";
+import VideoPlayer from "../../Components/video/VideoPlayer";
+import { Badge } from "../../Components/admin/AdminShared";
+import { Skeleton } from "../../Components/ui/Skeleton";
+import { ErrorState } from "../../Components/ui/States";
+import Toast from "../../Components/ui/Toast";
 import { formatDate, formatFileSize } from "../../lib/formatters";
 import { ROUTES } from "../../constants/routes";
 

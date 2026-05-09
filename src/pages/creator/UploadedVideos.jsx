@@ -4,9 +4,9 @@ import { Video, Trash2, RefreshCw, Search, Eye, Link2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useVideos, useDeleteVideo } from "../../hooks/useVideos";
 import { formatDate } from "../../lib/formatters";
-import { Skeleton } from "../../components/ui/Skeleton";
-import { EmptyState, ErrorState } from "../../components/ui/States";
-import Toast from "../../components/ui/Toast";
+import { Skeleton } from "../../Components/ui/Skeleton";
+import { EmptyState, ErrorState } from "../../Components/ui/States";
+import Toast from "../../Components/ui/Toast";
 import { ROUTES } from "../../constants/routes";
 
 const STATUS_STYLES = {

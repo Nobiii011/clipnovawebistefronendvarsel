@@ -2,7 +2,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Copy, CheckCheck, Send, ExternalLink, Play, Share2, Twitter } from "lucide-react";
-import VideoPlayer from "../../components/video/VideoPlayer";
+import VideoPlayer from "../../Components/video/VideoPlayer";
 import { resolveShortLink } from "../../services/link.service";
 import { ROUTES } from "../../constants/routes";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";

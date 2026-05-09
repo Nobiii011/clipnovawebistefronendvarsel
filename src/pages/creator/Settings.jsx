@@ -4,7 +4,7 @@ import { User, Lock, Eye, EyeOff, Save } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import apiClient from "../../api/client";
 import { normalizeError } from "../../lib/apiError";
-import Toast from "../../components/ui/Toast";
+import Toast from "../../Components/ui/Toast";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 function Section({ title, icon: Icon, children }) {

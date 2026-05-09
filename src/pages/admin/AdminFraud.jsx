@@ -2,10 +2,10 @@
 import { useState } from "react";
 import { Shield, ChevronDown, ChevronUp } from "lucide-react";
 import { useFraudFlags, useResolveFlag } from "../../hooks/useAdmin";
-import { Badge, Modal } from "../../components/admin/AdminShared";
-import { ErrorState, EmptyState } from "../../components/ui/States";
-import { Skeleton } from "../../components/ui/Skeleton";
-import Toast from "../../components/ui/Toast";
+import { Badge, Modal } from "../../Components/admin/AdminShared";
+import { ErrorState, EmptyState } from "../../Components/ui/States";
+import { Skeleton } from "../../Components/ui/Skeleton";
+import Toast from "../../Components/ui/Toast";
 import { formatDate } from "../../lib/formatters";
 
 const TYPE_LABELS = {

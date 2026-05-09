@@ -9,7 +9,7 @@ import { useState, useCallback, useRef } from "react";
 import { UploadCloud, FileVideo, X, CheckCircle, AlertCircle } from "lucide-react";
 import { useUpload, UPLOAD_STAGES } from "../../hooks/useUpload";
 import { formatFileSize } from "../../lib/formatters";
-import Toast from "../../components/ui/Toast";
+import Toast from "../../Components/ui/Toast";
 
 const ACCEPTED_MIME = ["video/mp4", "video/quicktime", "video/webm"];
 const ACCEPT_ATTR   = ".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm";

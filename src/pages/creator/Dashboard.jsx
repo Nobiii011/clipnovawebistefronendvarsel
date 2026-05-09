@@ -7,8 +7,8 @@ import { useWallet } from "../../hooks/useWallet";
 import { useVideos } from "../../hooks/useVideos";
 import { useAuth } from "../../context/AuthContext";
 import { formatCurrency, formatNumber, formatDate } from "../../lib/formatters";
-import { StatCardSkeleton, Skeleton } from "../../components/ui/Skeleton";
-import { ErrorState } from "../../components/ui/States";
+import { StatCardSkeleton, Skeleton } from "../../Components/ui/Skeleton";
+import { ErrorState } from "../../Components/ui/States";
 import { ROUTES } from "../../constants/routes";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 

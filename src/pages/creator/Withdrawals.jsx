@@ -8,9 +8,9 @@ import { useState, useCallback } from "react";
 import { Wallet, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useWallet, useWithdrawals, useRequestWithdrawal } from "../../hooks/useWallet";
 import { formatCurrency, formatDate } from "../../lib/formatters";
-import { Skeleton, TableRowSkeleton } from "../../components/ui/Skeleton";
-import { EmptyState, ErrorState } from "../../components/ui/States";
-import Toast from "../../components/ui/Toast";
+import { Skeleton, TableRowSkeleton } from "../../Components/ui/Skeleton";
+import { EmptyState, ErrorState } from "../../Components/ui/States";
+import Toast from "../../Components/ui/Toast";
 
 const PAYMENT_METHODS = ["UPI", "BANK_TRANSFER", "PAYPAL", "PAYONEER"];
 const MIN_WITHDRAWAL = 100;

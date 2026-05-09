@@ -5,8 +5,8 @@ import { useAdminDashboard } from "../../hooks/useAdmin";
 import { useAdminUsers } from "../../hooks/useAdmin";
 import { useAdminWithdrawals } from "../../hooks/useAdmin";
 import { useFraudFlags } from "../../hooks/useAdmin";
-import { AdminStatCard } from "../../components/admin/AdminShared";
-import { ErrorState } from "../../components/ui/States";
+import { AdminStatCard } from "../../Components/admin/AdminShared";
+import { ErrorState } from "../../Components/ui/States";
 import { formatCurrency, formatNumber, formatDate } from "../../lib/formatters";
 
 const PIE_COLORS = ["#22c55e", "#ef4444"];

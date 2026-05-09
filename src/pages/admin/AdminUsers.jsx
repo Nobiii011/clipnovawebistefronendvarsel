@@ -2,9 +2,9 @@
 import { useState, useCallback } from "react";
 import { Search, ShieldOff, ShieldCheck, User } from "lucide-react";
 import { useAdminUsers, useBlockUser, useUnblockUser } from "../../hooks/useAdmin";
-import { Badge, AdminTable, Pagination, Modal } from "../../components/admin/AdminShared";
-import { ErrorState, EmptyState } from "../../components/ui/States";
-import Toast from "../../components/ui/Toast";
+import { Badge, AdminTable, Pagination, Modal } from "../../Components/admin/AdminShared";
+import { ErrorState, EmptyState } from "../../Components/ui/States";
+import Toast from "../../Components/ui/Toast";
 import { formatDate } from "../../lib/formatters";
 
 export default function AdminUsers() {

@@ -2,8 +2,8 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { useAdminDashboard } from "../../hooks/useAdmin";
 import { useTimeSeries } from "../../hooks/useAnalytics";
-import { AdminStatCard } from "../../components/admin/AdminShared";
-import { ErrorState } from "../../components/ui/States";
+import { AdminStatCard } from "../../Components/admin/AdminShared";
+import { ErrorState } from "../../Components/ui/States";
 import { formatCurrency, formatNumber } from "../../lib/formatters";
 import { Eye, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 

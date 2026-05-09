@@ -2,9 +2,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { Settings, Save, RotateCcw } from "lucide-react";
 import { useSettings, useUpdateSettings } from "../../hooks/useAdmin";
-import { ErrorState } from "../../components/ui/States";
-import { Skeleton } from "../../components/ui/Skeleton";
-import Toast from "../../components/ui/Toast";
+import { ErrorState } from "../../Components/ui/States";
+import { Skeleton } from "../../Components/ui/Skeleton";
+import Toast from "../../Components/ui/Toast";
 
 const SETTING_META = {
   earningsPerValidView:    { label: "Earnings Per Valid View (₹)", type: "number", step: "0.001", min: 0, group: "Earnings" },

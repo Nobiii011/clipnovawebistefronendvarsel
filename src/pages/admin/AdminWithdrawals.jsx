@@ -2,9 +2,9 @@
 import { useState, useCallback } from "react";
 import { Wallet } from "lucide-react";
 import { useAdminWithdrawals, useApproveWithdrawal, useRejectWithdrawal, useMarkWithdrawalPaid } from "../../hooks/useAdmin";
-import { Badge, AdminTable, Pagination, Modal } from "../../components/admin/AdminShared";
-import { ErrorState, EmptyState } from "../../components/ui/States";
-import Toast from "../../components/ui/Toast";
+import { Badge, AdminTable, Pagination, Modal } from "../../Components/admin/AdminShared";
+import { ErrorState, EmptyState } from "../../Components/ui/States";
+import Toast from "../../Components/ui/Toast";
 import { formatCurrency, formatDate } from "../../lib/formatters";
 
 const TABS = ["", "PENDING", "APPROVED", "PAID", "REJECTED"];

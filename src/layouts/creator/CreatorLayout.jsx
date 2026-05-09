@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Menu, Search } from "lucide-react";
 import CreatorSidebar from "../../Components/creator/CreatorSidebar";
-import MobileBottomNav from "../../components/creator/MobileBottomNav";
-import CommandPalette, { useCommandPalette } from "../../components/ui/CommandPalette";
+import MobileBottomNav from "../../Components/creator/MobileBottomNav";
+import CommandPalette, { useCommandPalette } from "../../Components/ui/CommandPalette";
 
 export default function CreatorLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

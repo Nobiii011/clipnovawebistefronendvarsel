@@ -2,8 +2,8 @@
 import { DollarSign, TrendingUp, Wallet, ArrowDownCircle } from "lucide-react";
 import { useWallet, useTransactions } from "../../hooks/useWallet";
 import { formatCurrency, formatDate } from "../../lib/formatters";
-import { StatCardSkeleton, TableRowSkeleton } from "../../components/ui/Skeleton";
-import { EmptyState, ErrorState } from "../../components/ui/States";
+import { StatCardSkeleton, TableRowSkeleton } from "../../Components/ui/Skeleton";
+import { EmptyState, ErrorState } from "../../Components/ui/States";
 
 function WalletCard({ icon: Icon, label, value, color, loading }) {
   if (loading) return <StatCardSkeleton />;
