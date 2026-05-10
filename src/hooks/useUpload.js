@@ -1,9 +1,10 @@
 // src/hooks/useUpload.js
-// Manages the full upload state machine:
+// Upload state machine:
 //   idle → creating → [thumbnail?] → initiating → uploading → completing → done | error
 //
 // startUpload(file, metadata, thumbnailFile?)
 // thumbnailFile is optional — if omitted backend auto-generates thumbnail.
+// Thumbnail failure is NON-FATAL — upload continues, thumbnailWarning is set.
 
 import { useState, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -40,12 +41,15 @@ const STAGE_LABELS = {
 
 export function useUpload() {
   const qc = useQueryClient();
-  const [stage, setStage] = useState(UPLOAD_STAGES.IDLE);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState(null);
-  const [result, setResult] = useState(null);
+  const [stage, setStage]                   = useState(UPLOAD_STAGES.IDLE);
+  const [progress, setProgress]             = useState(0);
+  const [error, setError]                   = useState(null);
+  const [result, setResult]                 = useState(null);
+  // Non-fatal warning shown when thumbnail upload fails but video upload succeeds
+  const [thumbnailWarning, setThumbnailWarning] = useState(null);
+
   const abortControllerRef = useRef(null);
-  const abortedRef = useRef(false);
+  const abortedRef         = useRef(false);
 
   const reset = useCallback(() => {
     abortedRef.current = false;
@@ -53,6 +57,7 @@ export function useUpload() {
     setProgress(0);
     setError(null);
     setResult(null);
+    setThumbnailWarning(null);
   }, []);
 
   const abort = useCallback(() => {
@@ -61,6 +66,7 @@ export function useUpload() {
     setStage(UPLOAD_STAGES.IDLE);
     setProgress(0);
     setError(null);
+    setThumbnailWarning(null);
   }, []);
 
   const validateFile = useCallback((file) => {
@@ -76,9 +82,9 @@ export function useUpload() {
   }, []);
 
   /**
-   * @param {File} file - video file
+   * @param {File} file           - video file (must be real File instance)
    * @param {{ title: string, description?: string }} metadata
-   * @param {File|null} [thumbnailFile] - optional thumbnail image
+   * @param {File|null} thumbnailFile - optional thumbnail (must be real File instance)
    */
   const startUpload = useCallback(async (file, metadata, thumbnailFile = null) => {
     const fileError = validateFile(file);
@@ -94,6 +100,7 @@ export function useUpload() {
     setError(null);
     setResult(null);
     setProgress(0);
+    setThumbnailWarning(null);
 
     try {
       // STEP 1: Create video record
@@ -104,22 +111,32 @@ export function useUpload() {
       });
       if (abortedRef.current) return;
 
-      // STEP 2 (optional): Upload thumbnail
+      // STEP 2 (optional): Upload thumbnail — NON-FATAL
+      // Guard: only attempt if thumbnailFile is a real File/Blob instance.
+      // If it's a plain object (serialization bug), skip silently.
       if (thumbnailFile) {
-        setStage(UPLOAD_STAGES.THUMBNAIL);
-        try {
-          await uploadThumbnail(video._id, thumbnailFile);
-        } catch {
-          // Thumbnail failure is non-fatal — continue with upload
-          // Backend will auto-generate thumbnail
+        if (thumbnailFile instanceof File || thumbnailFile instanceof Blob) {
+          setStage(UPLOAD_STAGES.THUMBNAIL);
+          try {
+            await uploadThumbnail(video._id, thumbnailFile);
+          } catch (thumbErr) {
+            // Thumbnail failed — log warning, continue upload
+            // Backend will auto-generate thumbnail from video
+            console.warn("[useUpload] Thumbnail upload failed (non-fatal):", thumbErr?.message);
+            setThumbnailWarning("Thumbnail upload failed — a thumbnail will be auto-generated.");
+          }
+          if (abortedRef.current) return;
+        } else {
+          // thumbnailFile is not a real File — skip silently, warn in dev
+          console.warn("[useUpload] thumbnailFile is not a File instance, skipping thumbnail upload.", thumbnailFile);
+          setThumbnailWarning("Thumbnail could not be uploaded — a thumbnail will be auto-generated.");
         }
-        if (abortedRef.current) return;
       }
 
       // STEP 3: Get signed upload URL
       setStage(UPLOAD_STAGES.INITIATING);
       const { uploadUrl } = await initiateUpload({
-        videoId: video._id,
+        videoId:  video._id,
         fileName: file.name,
         fileSize: file.size,
         mimeType: file.type,
@@ -128,7 +145,7 @@ export function useUpload() {
 
       if (!uploadUrl) throw new Error("No upload URL returned from server.");
 
-      // STEP 4: PUT directly to R2
+      // STEP 4: PUT directly to R2 — no auth header
       setStage(UPLOAD_STAGES.UPLOADING);
       await uploadToR2(uploadUrl, file, (pct) => {
         if (!abortedRef.current) setProgress(pct);
@@ -152,7 +169,7 @@ export function useUpload() {
   }, [validateFile, qc]);
 
   const stageLabel = STAGE_LABELS[stage] ?? "";
-  const isActive = ![UPLOAD_STAGES.IDLE, UPLOAD_STAGES.DONE, UPLOAD_STAGES.ERROR].includes(stage);
+  const isActive   = ![UPLOAD_STAGES.IDLE, UPLOAD_STAGES.DONE, UPLOAD_STAGES.ERROR].includes(stage);
 
   return {
     stage,
@@ -160,6 +177,7 @@ export function useUpload() {
     progress,
     error,
     result,
+    thumbnailWarning,
     isActive,
     startUpload,
     reset,

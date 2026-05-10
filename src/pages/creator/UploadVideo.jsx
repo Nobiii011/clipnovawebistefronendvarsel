@@ -173,7 +173,7 @@ export default function UploadVideo() {
   const [toast, setToast] = useState(null);
   const inputRef = useRef(null);
 
-  const { stage, stageLabel, progress, error, result, isActive, startUpload, reset, abort, validateFile } = useUpload();
+  const { stage, stageLabel, progress, error, result, thumbnailWarning, isActive, startUpload, reset, abort, validateFile } = useUpload();
 
   const handleFile = useCallback((f) => {
     if (!f) return;
@@ -385,6 +385,14 @@ export default function UploadVideo() {
         {isActive && (
           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
             <StageIndicator stage={stage} stageLabel={stageLabel} progress={progress} />
+          </div>
+        )}
+
+        {/* Thumbnail Warning — non-fatal, shown after upload completes or during */}
+        {thumbnailWarning && stage !== UPLOAD_STAGES.ERROR && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 flex items-center gap-2">
+            <AlertCircle size={15} className="text-yellow-400 shrink-0" />
+            <p className="text-yellow-300 text-xs">{thumbnailWarning}</p>
           </div>
         )}
 

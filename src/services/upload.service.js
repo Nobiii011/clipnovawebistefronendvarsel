@@ -98,14 +98,33 @@ export async function completeUpload(videoId) {
  * @returns {{ thumbnailUrl: string }}
  */
 export async function uploadThumbnail(videoId, file) {
-  try {
-    const formData = new FormData();
-    formData.append("thumbnail", file);
-    formData.append("videoId", videoId);
+  // CRITICAL: file MUST be a real File/Blob instance — never a plain object.
+  // Debug guard: log before sending so any regression is immediately visible.
+  if (import.meta.env.DEV) {
+    console.log("[uploadThumbnail] file instanceof File:", file instanceof File);
+    console.log("[uploadThumbnail] file.name:", file?.name, "file.size:", file?.size);
+  }
 
-    // Do NOT set Content-Type manually — axios + browser sets it automatically
-    // with the correct multipart boundary. Manual override breaks the request.
-    const { data } = await apiClient.post("/uploads/thumbnail", formData);
+  if (!(file instanceof File) && !(file instanceof Blob)) {
+    throw new Error("uploadThumbnail: received non-File argument. Upload aborted.");
+  }
+
+  const formData = new FormData();
+  formData.append("thumbnail", file, file.name);
+  formData.append("videoId", videoId);
+
+  if (import.meta.env.DEV) {
+    console.log("[uploadThumbnail] formData.get('thumbnail'):", formData.get("thumbnail"));
+  }
+
+  try {
+    // IMPORTANT: The apiClient instance has a default `Content-Type: application/json`
+    // header which causes axios transformRequest to JSON.stringify FormData → `{}` (empty).
+    // Fix: explicitly delete Content-Type for this request so the browser sets
+    // `multipart/form-data; boundary=...` automatically.
+    const { data } = await apiClient.post("/uploads/thumbnail", formData, {
+      headers: { "Content-Type": undefined },
+    });
     return data.data; // { thumbnailUrl }
   } catch (err) {
     throw normalizeError(err);
