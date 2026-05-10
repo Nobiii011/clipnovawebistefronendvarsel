@@ -284,7 +284,7 @@ export default function Watch() {
                 Send videos directly to @clipnova_bot and start earning instantly.
               </p>
             </div>
-            <a href="https://t.me/clipnova_bot" target="_blank" rel="noopener noreferrer"
+            <a href="https://t.me/clipnovaaBot" target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-[#229ED9] hover:bg-[#1a8bc4] text-white transition shrink-0">
               <Send size={15} /> Open Bot
             </a>

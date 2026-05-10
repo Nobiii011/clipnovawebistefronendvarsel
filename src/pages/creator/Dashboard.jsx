@@ -110,7 +110,7 @@ export default function Dashboard() {
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 transition">
             <Upload size={15} /> Upload
           </Link>
-          <a href="https://t.me/clipnova_bot" target="_blank" rel="noopener noreferrer"
+          <a href="https://t.me/clipnovaaBot" target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-[#229ED9]/20 border border-[#229ED9]/30 text-[#229ED9] hover:bg-[#229ED9]/30 transition">
             <Send size={15} /> Telegram
           </a>
