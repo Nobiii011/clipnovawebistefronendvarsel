@@ -43,6 +43,10 @@ export async function initiateUpload({ videoId, fileName, fileSize, mimeType }) 
 }
 
 export function uploadToR2(uploadUrl, file, onProgress, signal) {
+  // In dev: proxy through Vite to avoid R2 CORS issues
+  // In production: use URL directly — R2 bucket CORS must allow the Vercel domain
+  // If R2 CORS is not configured, the XHR PUT will fail with a network error.
+  // WORKAROUND: if direct R2 PUT fails with CORS, we catch it and provide a clear message.
   const url = proxyR2Url(uploadUrl);
 
   return new Promise((resolve, reject) => {
@@ -64,9 +68,16 @@ export function uploadToR2(uploadUrl, file, onProgress, signal) {
       }
     });
 
-    xhr.addEventListener("error", () =>
-      reject(new Error("Upload failed. Check your internet connection and try again."))
-    );
+    xhr.addEventListener("error", () => {
+      // Most likely cause in production: R2 bucket CORS not configured for this origin.
+      // R2 CORS config must include: AllowedOrigins: ["https://your-vercel-domain.vercel.app"]
+      // AllowedMethods: ["PUT"], AllowedHeaders: ["Content-Type"]
+      reject(new Error(
+        "Video upload failed. This is likely a storage CORS configuration issue. " +
+        "Please contact support or try again."
+      ));
+    });
+
     xhr.addEventListener("abort", () => reject(new Error("Upload was cancelled.")));
     xhr.addEventListener("timeout", () => reject(new Error("Upload timed out. Please try again.")));
 
