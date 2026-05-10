@@ -22,7 +22,7 @@ function formatTime(s) {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
-export default function VideoPlayer({ videoUrl, linkId, title, onEnded }) {
+export default function VideoPlayer({ videoUrl, posterUrl, linkId, title, onEnded }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const hideControlsTimer = useRef(null);
@@ -173,6 +173,7 @@ export default function VideoPlayer({ videoUrl, linkId, title, onEnded }) {
       <video
         ref={videoRef}
         src={videoUrl}
+        poster={posterUrl || undefined}
         className="w-full aspect-video cursor-pointer"
         onClick={togglePlay}
         onPlay={() => setPlaying(true)}

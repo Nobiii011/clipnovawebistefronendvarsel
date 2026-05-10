@@ -8,6 +8,11 @@ export const API_ENDPOINTS = {
   AUTH_REFRESH: "/auth/refresh",
   AUTH_ME: "/auth/me",
 
+  // Uploads
+  UPLOAD_INITIATE: "/uploads/initiate",
+  UPLOAD_COMPLETE: "/uploads/complete",
+  UPLOAD_THUMBNAIL: "/uploads/thumbnail",
+
   // Videos
   VIDEOS: "/videos",
   VIDEO_BY_ID: (id) => `/videos/${id}`,

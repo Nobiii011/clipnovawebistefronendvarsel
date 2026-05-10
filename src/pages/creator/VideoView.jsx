@@ -89,6 +89,7 @@ export default function VideoView() {
       {video.status === "READY" && video.storageKey ? (
         <VideoPlayer
           videoUrl={`https://pub-11c2b603246a4f87b285e337ee6ad598.r2.dev/${video.storageKey}`}
+          posterUrl={video.thumbnailUrl}
           title={video.title}
         />
       ) : (

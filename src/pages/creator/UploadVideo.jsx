@@ -1,20 +1,23 @@
 // src/pages/creator/UploadVideo.jsx
-// Full 4-step upload flow:
+// Full upload flow with optional thumbnail:
 //   1. POST /videos          → create DB record
-//   2. POST /uploads/initiate → get signed PUT URL
-//   3. PUT  signedUrl         → direct browser → R2 (with progress)
-//   4. POST /uploads/complete → HeadObject verify → status = READY
+//   2. POST /uploads/thumbnail (optional, if user selected one)
+//   3. POST /uploads/initiate → get signed PUT URL
+//   4. PUT  signedUrl         → direct browser → R2 (with progress)
+//   5. POST /uploads/complete → HeadObject verify → status = READY
 
 import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { UploadCloud, FileVideo, X, CheckCircle, AlertCircle, XCircle } from "lucide-react";
+import { UploadCloud, FileVideo, X, CheckCircle, AlertCircle, XCircle, ImagePlus } from "lucide-react";
 import { useUpload, UPLOAD_STAGES } from "../../hooks/useUpload";
+import { validateThumbnail, ALLOWED_THUMBNAIL_TYPES } from "../../services/upload.service";
 import { formatFileSize } from "../../lib/formatters";
 import Toast from "../../Components/ui/Toast";
 import { ROUTES } from "../../constants/routes";
 
-const ACCEPTED_MIME = ["video/mp4", "video/quicktime", "video/webm"];
-const ACCEPT_ATTR   = ".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm";
+const ACCEPTED_MIME   = ["video/mp4", "video/quicktime", "video/webm"];
+const ACCEPT_ATTR     = ".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm";
+const THUMB_ACCEPT    = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
 
 // ── Progress Bar ─────────────────────────────────────────────────────────────
 function ProgressBar({ percent }) {
@@ -32,6 +35,7 @@ function ProgressBar({ percent }) {
 function StageIndicator({ stage, stageLabel, progress }) {
   const stages = [
     UPLOAD_STAGES.CREATING,
+    UPLOAD_STAGES.THUMBNAIL,
     UPLOAD_STAGES.INITIATING,
     UPLOAD_STAGES.UPLOADING,
     UPLOAD_STAGES.COMPLETING,
@@ -47,9 +51,7 @@ function StageIndicator({ stage, stageLabel, progress }) {
         )}
       </div>
 
-      {stage === UPLOAD_STAGES.UPLOADING && (
-        <ProgressBar percent={progress} />
-      )}
+      {stage === UPLOAD_STAGES.UPLOADING && <ProgressBar percent={progress} />}
 
       <div className="flex gap-2">
         {stages.map((s, i) => (
@@ -69,10 +71,101 @@ function StageIndicator({ stage, stageLabel, progress }) {
   );
 }
 
+// ── Thumbnail Picker ─────────────────────────────────────────────────────────
+function ThumbnailPicker({ thumbnail, onSelect, onClear, disabled }) {
+  const [dragActive, setDragActive] = useState(false);
+  const [thumbError, setThumbError] = useState("");
+  const inputRef = useRef(null);
+
+  const handleFile = (file) => {
+    if (!file) return;
+    const err = validateThumbnail(file);
+    if (err) { setThumbError(err); return; }
+    setThumbError("");
+    onSelect(file);
+  };
+
+  const previewUrl = thumbnail ? URL.createObjectURL(thumbnail) : null;
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-white/70 mb-1.5">
+        Thumbnail{" "}
+        <span className="text-white/30 text-xs">(optional — JPG, PNG, WebP, max 5 MB)</span>
+      </label>
+
+      {!thumbnail ? (
+        <div
+          className={`relative border-2 border-dashed rounded-xl p-6 transition-all cursor-pointer
+            ${disabled ? "opacity-50 pointer-events-none" : ""}
+            ${dragActive
+              ? "border-cyan-400 bg-cyan-400/5"
+              : "border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/5"
+            }`}
+          onDragOver={(e) => { e.preventDefault(); if (!disabled) setDragActive(true); }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragActive(false);
+            handleFile(e.dataTransfer.files[0]);
+          }}
+          onClick={() => !disabled && inputRef.current?.click()}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept={THUMB_ACCEPT}
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files[0])}
+            disabled={disabled}
+          />
+          <div className="flex flex-col items-center gap-2 text-center pointer-events-none">
+            <ImagePlus size={28} className={`transition ${dragActive ? "text-cyan-400" : "text-white/20"}`} />
+            <p className="text-sm text-white/40">
+              {dragActive ? "Drop image here" : "Drag & drop or click to add thumbnail"}
+            </p>
+            <p className="text-xs text-white/20">If skipped, a thumbnail will be auto-generated</p>
+          </div>
+        </div>
+      ) : (
+        <div className="relative rounded-xl overflow-hidden border border-white/10 bg-white/5">
+          {/* Preview image — lazy loaded */}
+          <img
+            src={previewUrl}
+            alt="Thumbnail preview"
+            loading="lazy"
+            className="w-full h-40 object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between">
+            <span className="text-xs text-white/70 truncate">{thumbnail.name}</span>
+            {!disabled && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onClear(); }}
+                className="p-1 rounded-lg bg-black/50 text-white/60 hover:text-red-400 transition shrink-0"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {thumbError && (
+        <p className="flex items-center gap-1.5 text-red-400 text-xs mt-2">
+          <AlertCircle size={13} /> {thumbError}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function UploadVideo() {
   const navigate = useNavigate();
   const [file, setFile] = useState(null);
+  const [thumbnail, setThumbnail] = useState(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -85,11 +178,7 @@ export default function UploadVideo() {
   const handleFile = useCallback((f) => {
     if (!f) return;
     const err = validateFile(f);
-    if (err) {
-      setFileError(err);
-      setFile(null);
-      return;
-    }
+    if (err) { setFileError(err); setFile(null); return; }
     setFileError("");
     setFile(f);
     if (!title) {
@@ -106,19 +195,21 @@ export default function UploadVideo() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file || !title.trim() || isActive) return;
-    await startUpload(file, { title, description });
+    // Pass thumbnail as third argument — null if not selected
+    await startUpload(file, { title, description }, thumbnail);
   };
 
   const handleReset = () => {
     reset();
     setFile(null);
+    setThumbnail(null);
     setTitle("");
     setDescription("");
     setFileError("");
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  // Success: show toast then redirect
+  // ── Success State ────────────────────────────────────────────────────────
   if (stage === UPLOAD_STAGES.DONE && result) {
     return (
       <div className="space-y-6 text-white max-w-2xl">
@@ -131,6 +222,17 @@ export default function UploadVideo() {
               <p className="text-green-400/70 text-sm mt-1">Your video has been uploaded and is now processing.</p>
             </div>
           </div>
+
+          {/* Show thumbnail if available */}
+          {result.thumbnailUrl && (
+            <img
+              src={result.thumbnailUrl}
+              alt={result.title}
+              loading="lazy"
+              className="w-full h-40 object-cover rounded-xl"
+            />
+          )}
+
           <div className="bg-white/5 rounded-xl p-4 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-white/50">Title</span>
@@ -141,6 +243,7 @@ export default function UploadVideo() {
               <span className="text-green-400 font-medium">{result.status ?? "READY"}</span>
             </div>
           </div>
+
           <div className="flex gap-3">
             <button
               onClick={() => navigate(ROUTES.UPLOADED_VIDEOS)}
@@ -168,9 +271,7 @@ export default function UploadVideo() {
 
       <div>
         <h1 className="text-2xl font-bold">Upload Video</h1>
-        <p className="text-white/40 text-sm mt-1">
-          MP4, MOV, WebM — max 1 GB
-        </p>
+        <p className="text-white/40 text-sm mt-1">MP4, MOV, WebM — max 1 GB</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -207,7 +308,15 @@ export default function UploadVideo() {
           />
         </div>
 
-        {/* Drop Zone */}
+        {/* Thumbnail Picker */}
+        <ThumbnailPicker
+          thumbnail={thumbnail}
+          onSelect={setThumbnail}
+          onClear={() => setThumbnail(null)}
+          disabled={isActive}
+        />
+
+        {/* Video Drop Zone */}
         <div>
           <label className="block text-sm font-medium text-white/70 mb-1.5">
             Video File <span className="text-red-400">*</span>

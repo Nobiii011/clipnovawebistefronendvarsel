@@ -11,6 +11,7 @@ import { StatCardSkeleton, Skeleton } from "../../Components/ui/Skeleton";
 import { ErrorState } from "../../Components/ui/States";
 import { ROUTES } from "../../constants/routes";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import VideoCard, { VideoCardSkeleton } from "../../components/video/VideoCard";
 
 function StatCard({ icon: Icon, label, value, color, loading }) {
   if (loading) return <StatCardSkeleton />;
@@ -190,7 +191,9 @@ export default function Dashboard() {
           <Link to={ROUTES.UPLOADED_VIDEOS} className="text-xs text-cyan-400 hover:text-cyan-300 transition">View all →</Link>
         </div>
         {videos.isLoading ? (
-          <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1,2,3].map(i => <VideoCardSkeleton key={i} />)}
+          </div>
         ) : videos.isError ? (
           <ErrorState message="Failed to load videos" onRetry={videos.refetch} />
         ) : recentVideos.length === 0 ? (
@@ -200,15 +203,11 @@ export default function Dashboard() {
             <Link to={ROUTES.UPLOAD} className="text-cyan-400 hover:text-cyan-300 text-sm transition">Upload your first video →</Link>
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {recentVideos.map((v) => (
-              <div key={v._id} className="flex items-center justify-between py-3 gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{v.title}</p>
-                  <p className="text-xs text-white/40">{formatDate(v.createdAt)}</p>
-                </div>
-                <VideoStatusBadge status={v.status} />
-              </div>
+              <Link key={v._id} to={`/videos/${v._id}`}>
+                <VideoCard video={v} />
+              </Link>
             ))}
           </div>
         )}

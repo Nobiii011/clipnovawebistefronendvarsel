@@ -1,40 +1,14 @@
 // src/pages/creator/UploadedVideos.jsx
 import { useState, useCallback } from "react";
-import { Video, Trash2, RefreshCw, Search, Eye, Link2 } from "lucide-react";
+import { Video, Trash2, RefreshCw, Search, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useVideos, useDeleteVideo } from "../../hooks/useVideos";
 import { formatDate } from "../../lib/formatters";
-import { Skeleton } from "../../Components/ui/Skeleton";
+import { VideoCardSkeleton } from "../../components/video/VideoCard";
+import VideoCard from "../../components/video/VideoCard";
 import { EmptyState, ErrorState } from "../../Components/ui/States";
 import Toast from "../../Components/ui/Toast";
 import { ROUTES } from "../../constants/routes";
-
-const STATUS_STYLES = {
-  READY:     "bg-green-500/20 text-green-400 border-green-500/30",
-  UPLOADING: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  FAILED:    "bg-red-500/20 text-red-400 border-red-500/30",
-  DELETED:   "bg-white/5 text-white/30 border-white/10",
-};
-
-function StatusBadge({ status }) {
-  return (
-    <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${STATUS_STYLES[status] ?? STATUS_STYLES.DELETED}`}>
-      {status}
-    </span>
-  );
-}
-
-function VideoCardSkeleton() {
-  return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
-      <div className="bg-white/10 rounded-xl h-36 animate-pulse" />
-      <div className="space-y-2">
-        <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
-        <div className="h-3 bg-white/10 rounded animate-pulse w-1/2" />
-      </div>
-    </div>
-  );
-}
 
 export default function UploadedVideos() {
   const [search, setSearch] = useState("");
@@ -109,41 +83,20 @@ export default function UploadedVideos() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((video) => (
-            <div
+            <VideoCard
               key={video._id}
-              className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition"
-            >
-              {/* Thumbnail placeholder */}
-              <div className="bg-white/5 h-36 flex items-center justify-center">
-                {video.thumbnailUrl ? (
-                  <img
-                    src={video.thumbnailUrl}
-                    alt={video.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Video size={32} className="text-white/20" />
-                )}
-              </div>
-
-              <div className="p-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-medium text-sm leading-snug line-clamp-2">{video.title}</p>
-                  <StatusBadge status={video.status} />
-                </div>
-
-                <div className="text-xs text-white/40 space-y-1">
-                  <p>Uploaded {formatDate(video.createdAt)}</p>
-                  {video.views != null && <p>{video.views.toLocaleString()} views</p>}
-                </div>
-
-                <div className="flex gap-2 pt-1">
-                  <Link to={`/videos/${video._id}`}
-                    className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition">
+              video={video}
+              actions={
+                <>
+                  <Link
+                    to={`/videos/${video._id}`}
+                    className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Eye size={13} /> View
                   </Link>
                   <button
-                    onClick={() => handleDelete(video._id, video.title)}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(video._id, video.title); }}
                     disabled={deletingId === video._id}
                     className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 disabled:opacity-40 transition"
                   >
@@ -154,9 +107,10 @@ export default function UploadedVideos() {
                     )}
                     Delete
                   </button>
-                </div>
-              </div>
-            </div>
+                  <span className="text-white/20 text-xs ml-auto">{formatDate(video.createdAt)}</span>
+                </>
+              }
+            />
           ))}
         </div>
       )}

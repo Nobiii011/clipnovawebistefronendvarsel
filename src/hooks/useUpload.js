@@ -1,28 +1,37 @@
 // src/hooks/useUpload.js
-// Manages the full 3-step upload state machine:
-//   idle → creating → initiating → uploading → completing → done | error
+// Manages the full upload state machine:
+//   idle → creating → [thumbnail?] → initiating → uploading → completing → done | error
 //
-// Exposes a single startUpload(file, metadata) function.
-// Progress is tracked via XHR upload events.
+// startUpload(file, metadata, thumbnailFile?)
+// thumbnailFile is optional — if omitted backend auto-generates thumbnail.
 
 import { useState, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../lib/queryKeys";
 import { createVideo } from "../services/video.service";
-import { initiateUpload, uploadToR2, completeUpload, ALLOWED_MIME_TYPES, MAX_FILE_SIZE } from "../services/upload.service";
+import {
+  initiateUpload,
+  uploadToR2,
+  completeUpload,
+  uploadThumbnail,
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE,
+} from "../services/upload.service";
 
 export const UPLOAD_STAGES = {
   IDLE:       "idle",
-  CREATING:   "creating",    // POST /videos
-  INITIATING: "initiating",  // POST /uploads/initiate
-  UPLOADING:  "uploading",   // PUT signed URL → R2
-  COMPLETING: "completing",  // POST /uploads/complete
+  CREATING:   "creating",     // POST /videos
+  THUMBNAIL:  "thumbnail",    // POST /uploads/thumbnail (optional)
+  INITIATING: "initiating",   // POST /uploads/initiate
+  UPLOADING:  "uploading",    // PUT signed URL → R2
+  COMPLETING: "completing",   // POST /uploads/complete
   DONE:       "done",
   ERROR:      "error",
 };
 
 const STAGE_LABELS = {
   [UPLOAD_STAGES.CREATING]:   "Creating video record...",
+  [UPLOAD_STAGES.THUMBNAIL]:  "Uploading thumbnail...",
   [UPLOAD_STAGES.INITIATING]: "Preparing upload...",
   [UPLOAD_STAGES.UPLOADING]:  "Uploading to storage...",
   [UPLOAD_STAGES.COMPLETING]: "Verifying upload...",
@@ -66,7 +75,12 @@ export function useUpload() {
     return null;
   }, []);
 
-  const startUpload = useCallback(async (file, metadata) => {
+  /**
+   * @param {File} file - video file
+   * @param {{ title: string, description?: string }} metadata
+   * @param {File|null} [thumbnailFile] - optional thumbnail image
+   */
+  const startUpload = useCallback(async (file, metadata, thumbnailFile = null) => {
     const fileError = validateFile(file);
     if (fileError) {
       setError(fileError);
@@ -90,7 +104,19 @@ export function useUpload() {
       });
       if (abortedRef.current) return;
 
-      // STEP 2: Get signed upload URL
+      // STEP 2 (optional): Upload thumbnail
+      if (thumbnailFile) {
+        setStage(UPLOAD_STAGES.THUMBNAIL);
+        try {
+          await uploadThumbnail(video._id, thumbnailFile);
+        } catch {
+          // Thumbnail failure is non-fatal — continue with upload
+          // Backend will auto-generate thumbnail
+        }
+        if (abortedRef.current) return;
+      }
+
+      // STEP 3: Get signed upload URL
       setStage(UPLOAD_STAGES.INITIATING);
       const { uploadUrl } = await initiateUpload({
         videoId: video._id,
@@ -102,14 +128,14 @@ export function useUpload() {
 
       if (!uploadUrl) throw new Error("No upload URL returned from server.");
 
-      // STEP 3: PUT directly to R2 — no auth header
+      // STEP 4: PUT directly to R2
       setStage(UPLOAD_STAGES.UPLOADING);
       await uploadToR2(uploadUrl, file, (pct) => {
         if (!abortedRef.current) setProgress(pct);
       }, ac.signal);
       if (abortedRef.current) return;
 
-      // STEP 4: Notify backend upload is complete
+      // STEP 5: Notify backend upload is complete
       setStage(UPLOAD_STAGES.COMPLETING);
       const completed = await completeUpload(video._id);
       if (abortedRef.current) return;

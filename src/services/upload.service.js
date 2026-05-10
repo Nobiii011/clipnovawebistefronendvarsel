@@ -2,23 +2,11 @@
 // Backend upload flow:
 // 1. POST /uploads/initiate  { videoId, fileName, fileSize, mimeType }
 //    → { uploadUrl (signed PUT to R2), storageKey, expiresAt }
-// 2. PUT uploadUrl  (direct browser → R2)
-//    ⚠️  R2 CORS issue: R2 bucket has no CORS config → browser blocks XHR PUT
-//    FIX: In dev, Vite proxy rewrites R2 URL through /r2-upload proxy
-//    In production: R2 CORS must be configured (see CORS config below)
+// 2. PUT uploadUrl  (direct browser → R2, XHR for progress)
 // 3. POST /uploads/complete  { videoId }
 //    → HeadObject verify → video.status = READY
-//
-// R2 CORS config required (set in Cloudflare dashboard):
-// [
-//   {
-//     "AllowedOrigins": ["http://localhost:5173","http://localhost:5175","https://yourdomain.com"],
-//     "AllowedMethods": ["PUT","GET","HEAD"],
-//     "AllowedHeaders": ["Content-Type","Content-Length","x-amz-checksum-crc32","x-amz-sdk-checksum-algorithm"],
-//     "ExposeHeaders": ["ETag"],
-//     "MaxAgeSeconds": 3600
-//   }
-// ]
+// 4. POST /uploads/thumbnail { videoId, formData(file) }  [optional]
+//    → { thumbnailUrl }
 
 import apiClient from "../api/client";
 import { normalizeError } from "../lib/apiError";
@@ -26,20 +14,17 @@ import { normalizeError } from "../lib/apiError";
 export const ALLOWED_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 export const MAX_FILE_SIZE = 1073741824; // 1 GB
 
+export const ALLOWED_THUMBNAIL_TYPES = ["image/jpeg", "image/png", "image/webp"];
+export const MAX_THUMBNAIL_SIZE = 5 * 1024 * 1024; // 5 MB
+
 const R2_BUCKET_HOST = "clipnova.9eb21a93fe24eb749b65eaa4252d2319.r2.cloudflarestorage.com";
 const IS_DEV = import.meta.env.DEV;
 
-/**
- * Rewrite R2 signed URL to go through Vite proxy in dev.
- * In production the URL is used directly (R2 CORS must be configured).
- */
 function proxyR2Url(signedUrl) {
   if (!IS_DEV) return signedUrl;
   try {
     const url = new URL(signedUrl);
     if (url.hostname === R2_BUCKET_HOST) {
-      // Replace https://bucket.r2.cloudflarestorage.com/path?sig
-      // with   /r2-upload/path?sig  (Vite proxy handles it)
       return `/r2-upload${url.pathname}${url.search}`;
     }
   } catch {
@@ -57,10 +42,6 @@ export async function initiateUpload({ videoId, fileName, fileSize, mimeType }) 
   }
 }
 
-/**
- * Upload file directly to R2 via signed PUT URL.
- * Uses XHR for progress tracking. No auth headers sent to R2.
- */
 export function uploadToR2(uploadUrl, file, onProgress, signal) {
   const url = proxyR2Url(uploadUrl);
 
@@ -86,25 +67,14 @@ export function uploadToR2(uploadUrl, file, onProgress, signal) {
     xhr.addEventListener("error", () =>
       reject(new Error("Upload failed. Check your internet connection and try again."))
     );
+    xhr.addEventListener("abort", () => reject(new Error("Upload was cancelled.")));
+    xhr.addEventListener("timeout", () => reject(new Error("Upload timed out. Please try again.")));
 
-    xhr.addEventListener("abort", () =>
-      reject(new Error("Upload was cancelled."))
-    );
+    if (signal) signal.addEventListener("abort", () => xhr.abort());
 
-    xhr.addEventListener("timeout", () =>
-      reject(new Error("Upload timed out. Please try again."))
-    );
-
-    // Abort support via AbortSignal
-    if (signal) {
-      signal.addEventListener("abort", () => xhr.abort());
-    }
-
-    xhr.timeout = 0; // no timeout for large files
+    xhr.timeout = 0;
     xhr.open("PUT", url);
-    // CRITICAL: Only Content-Type. No Authorization. No cookies.
     xhr.setRequestHeader("Content-Type", file.type);
-    // Explicitly do NOT send credentials
     xhr.withCredentials = false;
     xhr.send(file);
   });
@@ -117,4 +87,43 @@ export async function completeUpload(videoId) {
   } catch (err) {
     throw normalizeError(err);
   }
+}
+
+/**
+ * Upload a thumbnail image for a video.
+ * Called AFTER the video record is created (videoId required).
+ * If skipped, backend auto-generates a thumbnail.
+ * @param {string} videoId
+ * @param {File} file - jpg/png/webp, max 5MB
+ * @returns {{ thumbnailUrl: string }}
+ */
+export async function uploadThumbnail(videoId, file) {
+  try {
+    const formData = new FormData();
+    formData.append("thumbnail", file);
+    formData.append("videoId", videoId);
+
+    const { data } = await apiClient.post("/uploads/thumbnail", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data.data; // { thumbnailUrl }
+  } catch (err) {
+    throw normalizeError(err);
+  }
+}
+
+/**
+ * Validate a thumbnail file before upload.
+ * Returns error string or null if valid.
+ */
+export function validateThumbnail(file) {
+  if (!file) return "No file selected.";
+  if (!ALLOWED_THUMBNAIL_TYPES.includes(file.type)) {
+    return "Unsupported format. Allowed: JPG, PNG, WebP.";
+  }
+  if (file.size > MAX_THUMBNAIL_SIZE) {
+    return `File too large. Maximum size is 5 MB.`;
+  }
+  if (file.size === 0) return "File is empty.";
+  return null;
 }
