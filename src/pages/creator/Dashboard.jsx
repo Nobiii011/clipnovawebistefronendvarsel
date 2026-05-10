@@ -11,7 +11,7 @@ import { StatCardSkeleton, Skeleton } from "../../Components/ui/Skeleton";
 import { ErrorState } from "../../Components/ui/States";
 import { ROUTES } from "../../constants/routes";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
-import VideoCard, { VideoCardSkeleton } from "../../components/video/VideoCard";
+import VideoCard, { VideoCardSkeleton } from "../../Components/video/VideoCard";
 
 function StatCard({ icon: Icon, label, value, color, loading }) {
   if (loading) return <StatCardSkeleton />;
