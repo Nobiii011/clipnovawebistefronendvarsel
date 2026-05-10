@@ -118,13 +118,10 @@ export async function uploadThumbnail(videoId, file) {
   }
 
   try {
-    // IMPORTANT: The apiClient instance has a default `Content-Type: application/json`
-    // header which causes axios transformRequest to JSON.stringify FormData → `{}` (empty).
-    // Fix: explicitly delete Content-Type for this request so the browser sets
-    // `multipart/form-data; boundary=...` automatically.
-    const { data } = await apiClient.post("/uploads/thumbnail", formData, {
-      headers: { "Content-Type": undefined },
-    });
+    // Content-Type is handled globally in apiClient request interceptor:
+    // when body is FormData, interceptor deletes Content-Type so browser
+    // sets multipart/form-data with correct boundary automatically.
+    const { data } = await apiClient.post("/uploads/thumbnail", formData);
     return data.data; // { thumbnailUrl }
   } catch (err) {
     throw normalizeError(err);

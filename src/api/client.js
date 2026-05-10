@@ -43,12 +43,19 @@ function processQueue(error, token = null) {
 }
 
 // ── REQUEST INTERCEPTOR ──────────────────────────────────────────────────────
-// Attach access token to every request
+// Attach access token to every request.
+// ALSO: If body is FormData, delete the default Content-Type header so the
+// browser sets multipart/form-data with the correct boundary automatically.
+// Without this, axios JSON.stringify serializes FormData → `{}` (empty object).
 apiClient.interceptors.request.use(
   (config) => {
     const token = tokenStorage.getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // FormData must NOT have Content-Type set manually
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
     }
     return config;
   },
