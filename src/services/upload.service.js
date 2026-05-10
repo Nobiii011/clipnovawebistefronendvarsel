@@ -103,9 +103,9 @@ export async function uploadThumbnail(videoId, file) {
     formData.append("thumbnail", file);
     formData.append("videoId", videoId);
 
-    const { data } = await apiClient.post("/uploads/thumbnail", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    // Do NOT set Content-Type manually — axios + browser sets it automatically
+    // with the correct multipart boundary. Manual override breaks the request.
+    const { data } = await apiClient.post("/uploads/thumbnail", formData);
     return data.data; // { thumbnailUrl }
   } catch (err) {
     throw normalizeError(err);
